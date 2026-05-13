@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Wallet</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="shield">🔐</span>
+        <span class="title">Secure Wallet</span>
+      </div>
+      <div class="network-selector">
+        <select id="network-select">
+          <option value="ethereum">Ethereum</option>
+          <option value="base">Base</option>
+          <option value="optimism">Optimism</option>
+          <option value="arbitrum">Arbitrum</option>
+          <option value="polygon">Polygon</option>
+          <option value="bnb">BNB Chain</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Views Container -->
+    <main id="main-content">
+      
+      <!-- WELCOME / CREATE VIEW -->
+      <div id="view-welcome" class="view">
+        <div class="hero">
+          <div class="shield-big">🛡️</div>
+          <h1>Seed-Proof Security</h1>
+          <p>Even if your seed phrase leaks, hackers cannot drain your funds.</p>
+        </div>
+        
+        <div class="actions">
+          <button id="btn-create" class="btn-primary">
+            <span>✨</span> Create New Wallet
+          </button>
+          <button id="btn-recover" class="btn-secondary">
+            <span>🔑</span> Import Wallet
+          </button>
+        </div>
+        
+        <div class="features">
+          <div class="feature">
+            <span class="icon">🔒</span>
+            <span>8-Layer Security</span>
+          </div>
+          <div class="feature">
+            <span class="icon">⏱️</span>
+            <span>24h Time-Lock</span>
+          </div>
+          <div class="feature">
+            <span class="icon">🛡️</span>
+            <span>Multi-Sig Vault</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREATE PASSWORD VIEW -->
+      <div id="view-create-password" class="view hidden">
+        <h2>Create Password</h2>
+        <p class="subtitle">This password encrypts your wallet. Never share it.</p>
+        
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="create-password" placeholder="Min 12 characters" autocomplete="new-password">
+          <div class="strength-bar">
+            <div class="strength-fill" id="strength-fill"></div>
+          </div>
+          <small id="strength-text">Enter password</small>
+        </div>
+        
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <input type="password" id="create-password-confirm" placeholder="Repeat password" autocomplete="new-password">
+        </div>
+        
+        <div class="checkbox-group">
+          <input type="checkbox" id="agree-terms">
+          <label for="agree-terms">I understand Secure Wallet cannot recover this password</label>
+        </div>
+        
+        <button id="btn-create-submit" class="btn-primary" disabled>Create Wallet</button>
+        <button id="btn-create-back" class="btn-text">← Back</button>
+      </div>
+
+      <!-- MNEMONIC VIEW -->
+      <div id="view-mnemonic" class="view hidden">
+        <h2>🔐 Your Recovery Phrase</h2>
+        <p class="warning">⚠️ Write these 12 words down. This is the ONLY way to recover your wallet.</p>
+        
+        <div class="mnemonic-grid" id="mnemonic-grid"></div>
+        
+        <button id="btn-copy-mnemonic" class="btn-secondary">
+          <span>📋</span> Copy to Clipboard
+        </button>
+        
+        <div class="checkbox-group">
+          <input type="checkbox" id="confirm-saved">
+          <label for="confirm-saved">I have written down my recovery phrase</label>
+        </div>
+        
+        <button id="btn-mnemonic-continue" class="btn-primary" disabled>Continue →</button>
+      </div>
+
+      <!-- UNLOCK VIEW -->
+      <div id="view-unlock" class="view hidden">
+        <div class="lock-screen">
+          <div class="lock-icon">🔒</div>
+          <h2>Wallet Locked</h2>
+          <p>Enter your password to unlock</p>
+          
+          <div class="form-group">
+            <input type="password" id="unlock-password" placeholder="Password" autocomplete="current-password">
+          </div>
+          
+          <button id="btn-unlock" class="btn-primary">Unlock</button>
+          <button id="btn-unlock-reset" class="btn-text danger">Reset Wallet</button>
+        </div>
+      </div>
+
+      <!-- DASHBOARD VIEW -->
+      <div id="view-dashboard" class="view hidden">
+        <div class="account-card">
+          <div class="account-info">
+            <div class="account-avatar" id="account-avatar"></div>
+            <div class="account-details">
+              <div class="account-name">My Wallet</div>
+              <div class="account-address" id="account-address">0x...</div>
+            </div>
+          </div>
+          <div class="account-balance" id="account-balance">0.0000 ETH</div>
+          <div class="account-value" id="account-value">$0.00</div>
+        </div>
+
+        <div class="action-bar">
+          <button id="btn-send" class="action-btn">
+            <span class="icon">📤</span>
+            <span>Send</span>
+          </button>
+          <button id="btn-receive" class="action-btn">
+            <span class="icon">📥</span>
+            <span>Receive</span>
+          </button>
+          <button id="btn-swap" class="action-btn">
+            <span class="icon">🔄</span>
+            <span>Swap</span>
+          </button>
+          <button id="btn-vault" class="action-btn vault">
+            <span class="icon">🛡️</span>
+            <span>Vault</span>
+          </button>
+        </div>
+
+        <div class="security-status" id="security-status">
+          <div class="status-header">
+            <span>🛡️ Security Status</span>
+            <span class="status-badge" id="status-badge">Basic</span>
+          </div>
+          <div class="security-layers">
+            <div class="layer" data-layer="1">
+              <span class="layer-icon">🔐</span>
+              <span class="layer-name">Multi-Sig Vault</span>
+              <span class="layer-status" id="layer-vault">⚪</span>
+            </div>
+            <div class="layer" data-layer="2">
+              <span class="layer-icon">⏱️</span>
+              <span class="layer-name">Time-Lock</span>
+              <span class="layer-status" id="layer-timelock">⚪</span>
+            </div>
+            <div class="layer" data-layer="3">
+              <span class="layer-icon">💰</span>
+              <span class="layer-name">Spending Cap</span>
+              <span class="layer-status" id="layer-cap">⚪</span>
+            </div>
+            <div class="layer" data-layer="4">
+              <span class="layer-icon">📋</span>
+              <span class="layer-name">Whitelist</span>
+              <span class="layer-status" id="layer-whitelist">⚪</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="transactions" id="transactions">
+          <h3>Recent Activity</h3>
+          <div class="tx-list" id="tx-list">
+            <div class="tx-empty">No transactions yet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEND VIEW -->
+      <div id="view-send" class="view hidden">
+        <h2>Send</h2>
+        
+        <div class="form-group">
+          <label>Recipient Address</label>
+          <input type="text" id="send-to" placeholder="0x..." autocomplete="off">
+          <small id="send-to-error" class="error"></small>
+        </div>
+        
+        <div class="form-group">
+          <label>Amount</label>
+          <div class="amount-input">
+            <input type="number" id="send-amount" placeholder="0.0" step="0.0001">
+            <span class="token">ETH</span>
+          </div>
+          <div class="balance-row">
+            <small>Balance: <span id="send-balance">0.0000 ETH</span></small>
+            <button class="btn-max" id="btn-max">MAX</button>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Gas Price</label>
+          <select id="gas-speed">
+            <option value="slow">🐢 Slow — Cheaper</option>
+            <option value="standard" selected>⚡ Standard</option>
+            <option value="fast">🚀 Fast — Priority</option>
+          </select>
+        </div>
+        
+        <div class="tx-summary" id="tx-summary">
+          <div class="summary-row">
+            <span>Amount</span>
+            <span id="summary-amount">—</span>
+          </div>
+          <div class="summary-row">
+            <span>Network Fee</span>
+            <span id="summary-fee">—</span>
+          </div>
+          <div class="summary-row total">
+            <span>Total</span>
+            <span id="summary-total">—</span>
+          </div>
+        </div>
+        
+        <button id="btn-send-submit" class="btn-primary" disabled>Confirm Send</button>
+        <button id="btn-send-back" class="btn-text">← Cancel</button>
+      </div>
+
+      <!-- RECEIVE VIEW -->
+      <div id="view-receive" class="view hidden">
+        <h2>Receive</h2>
+        <div class="qr-container">
+          <div class="qr-code" id="qr-code"></div>
+          <div class="address-box">
+            <code id="receive-address">0x...</code>
+            <button id="btn-copy-address" class="btn-icon">📋</button>
+          </div>
+        </div>
+        <p class="hint">Share this address to receive funds</p>
+        <button id="btn-receive-back" class="btn-text">← Back</button>
+      </div>
+
+      <!-- VAULT VIEW -->
+      <div id="view-vault" class="view hidden">
+        <h2>🛡️ Anti-Drain Vault</h2>
+        
+        <div id="vault-not-deployed" class="vault-section">
+          <p>Deploy a smart contract vault for maximum protection.</p>
+          <div class="vault-benefits">
+            <div class="benefit">✅ 2-of-2 Multi-Signature required</div>
+            <div class="benefit">✅ 24-hour withdrawal delay</div>
+            <div class="benefit">✅ Spending limits enforced on-chain</div>
+            <div class="benefit">✅ Emergency freeze capability</div>
+            <div class="benefit">✅ Social recovery with guardians</div>
+          </div>
+          <button id="btn-deploy-vault" class="btn-primary vault-deploy">
+            <span>🚀</span> Deploy Vault
+          </button>
+        </div>
+        
+        <div id="vault-deployed" class="vault-section hidden">
+          <div class="vault-status">
+            <span class="status-dot green"></span>
+            <span>Vault Active</span>
+          </div>
+          <div class="vault-address">
+            <label>Vault Address</label>
+            <code id="vault-address">0x...</code>
+          </div>
+          <div class="vault-actions">
+            <button id="btn-freeze" class="btn-danger">
+              <span>🚨</span> Emergency Freeze
+            </button>
+            <button id="btn-add-guardian" class="btn-secondary">
+              <span>👤</span> Manage Guardians
+            </button>
+          </div>
+        </div>
+        
+        <button id="btn-vault-back" class="btn-text">← Back</button>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <button id="tab-home" class="tab active">
+        <span>🏠</span>
+        <small>Home</small>
+      </button>
+      <button id="tab-activity" class="tab">
+        <span>📊</span>
+        <small>Activity</small>
+      </button>
+      <button id="tab-security" class="tab">
+        <span>🛡️</span>
+        <small>Security</small>
+      </button>
+      <button id="tab-settings" class="tab">
+        <span>⚙️</span>
+        <small>Settings</small>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+    <p id="loading-text">Processing...</p>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
   "name": "secure-wallet",
   "version": "1.0.0",
-  "description": "Anti-Drain EVM Smart Wallet — 8-layer protection. Even if your seed phrase leaks, hackers cannot drain your funds. Features multi-sig vault, time-locked withdrawals, spending limits, emergency freeze, social recovery, session keys, and airdrop burner management.",
+  "description": "The only EVM wallet where seed phrase leaks DON'T mean total loss. Includes: CLI wallet, REST API server, Chrome Extension, and deployable smart contract vault with 8-layer on-chain security.",
   "type": "module",
   "main": "server.js",
   "scripts": {

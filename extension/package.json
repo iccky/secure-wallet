@@ -1,0 +1,30 @@
+{
+  "name": "secure-wallet-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for Secure Wallet — Anti-Drain EVM wallet with 8-layer protection",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/watch.js",
+    "lint": "eslint src/",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "wallet",
+    "ethereum",
+    "security",
+    "anti-drain",
+    "multi-sig",
+    "eip-1193"
+  ],
+  "author": "iccky",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iccky/secure-wallet.git"
+  }
+}
