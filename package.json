@@ -1,0 +1,47 @@
+{
+  "name": "secure-wallet",
+  "version": "1.0.0",
+  "description": "Anti-Drain EVM Smart Wallet — 8-layer protection. Even if your seed phrase leaks, hackers cannot drain your funds. Features multi-sig vault, time-locked withdrawals, spending limits, emergency freeze, social recovery, session keys, and airdrop burner management.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "cli": "node cli.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "express": "^4.21.0",
+    "solc": "^0.8.35",
+    "uuid": "^9.0.1"
+  },
+  "keywords": [
+    "ethereum",
+    "wallet",
+    "security",
+    "anti-drain",
+    "smart-contract",
+    "vault",
+    "multi-sig",
+    "airdrop",
+    "burner-wallet",
+    "evm",
+    "seed-phrase-protection",
+    "time-lock",
+    "social-recovery",
+    "session-keys"
+  ],
+  "author": "iccky",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iccky/secure-wallet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iccky/secure-wallet/issues"
+  },
+  "homepage": "https://github.com/iccky/secure-wallet#readme"
+}
