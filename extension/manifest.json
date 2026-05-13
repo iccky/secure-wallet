@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Secure Wallet — Anti-Drain Protection",
   "version": "1.0.0",
-  "description": "The only EVM wallet where seed phrase leaks DON'T mean total loss. 8-layer on-chain security vault.",
+  "description": "The only EVM wallet where seed phrase leaks DON'T mean total loss. 8-layer on-chain security + real-time scam detection + transaction preview before signing. Protect your crypto on Ethereum, Base, Optimism, Arbitrum, Polygon, BNB Chain.",
   "permissions": [
     "storage",
     "activeTab",

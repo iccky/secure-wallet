@@ -299,6 +299,60 @@
         <button id="btn-vault-back" class="btn-text">← Back</button>
       </div>
 
+      <!-- TRANSACTION CONFIRMATION VIEW -->
+      <div id="view-confirm" class="view hidden">
+        <h2>🔍 Review Transaction</h2>
+        
+        <div class="security-score" id="security-score">
+          <div class="score-circle" id="score-circle">
+            <span class="score-number" id="score-number">--</span>
+            <span class="score-label">Safety</span>
+          </div>
+          <div class="score-text" id="score-text">Analyzing...</div>
+        </div>
+        
+        <div class="risk-alerts" id="risk-alerts"></div>
+        
+        <div class="preview-card">
+          <h3>📋 Transaction Details</h3>
+          <div class="preview-content" id="preview-content">
+            <div class="preview-row">
+              <span>Action</span>
+              <span id="preview-action">--</span>
+            </div>
+            <div class="preview-row">
+              <span>To</span>
+              <code id="preview-to">--</code>
+            </div>
+            <div class="preview-row">
+              <span>Value</span>
+              <span id="preview-value">--</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="state-changes" id="state-changes">
+          <h3>⚡ State Changes</h3>
+          <div class="changes-list" id="changes-list"></div>
+        </div>
+        
+        <div class="override-section hidden" id="override-section">
+          <div class="checkbox-group">
+            <input type="checkbox" id="override-risk">
+            <label for="override-risk">I understand the risks and want to proceed anyway</label>
+          </div>
+        </div>
+        
+        <div class="confirm-actions">
+          <button id="btn-reject" class="btn-secondary">
+            <span>❌</span> Reject
+          </button>
+          <button id="btn-confirm-sign" class="btn-primary" disabled>
+            <span>✅</span> Sign
+          </button>
+        </div>
+      </div>
+
     </main>
 
     <!-- Footer -->

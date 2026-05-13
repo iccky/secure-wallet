@@ -8,12 +8,16 @@ import { SecureStorage } from '../utils/storage.js';
 import { WalletManager } from '../utils/wallet.js';
 import { VaultManager } from '../utils/vault.js';
 import { NETWORKS } from '../utils/network.js';
+import { ScamScanner } from '../utils/scanner.js';
+import { TransactionPreview } from '../utils/preview.js';
 
 // ─── Global Instances ───
 const storage = new SecureStorage();
 const crypto = new CryptoEngine();
 let walletManager = null;
 let vaultManager = null;
+let scamScanner = null;
+let txPreview = null;
 
 // ─── Initialization ───
 chrome.runtime.onStartup.addListener(init);
@@ -32,6 +36,8 @@ chrome.runtime.onInstalled.addListener((details) => {
 async function init() {
   walletManager = new WalletManager(storage, crypto);
   vaultManager = new VaultManager(storage);
+  scamScanner = new ScamScanner();
+  txPreview = new TransactionPreview();
   
   // Set up periodic security checks
   chrome.alarms.create('security-check', { periodInMinutes: 5 });
@@ -118,24 +124,61 @@ async function handleMessage(request, sender) {
       return { exists, unlocked: !!session, address: session?.address || null };
     }
     
+    // ─── Security & Preview ───
+    case 'SCAN_TRANSACTION': {
+      const { tx, chainId } = data;
+      const scan = await scamScanner.analyzeTransaction(tx, chainId);
+      return { success: true, scan };
+    }
+    
+    case 'PREVIEW_TRANSACTION': {
+      const { tx, chainId } = data;
+      const preview = await txPreview.preview(tx, chainId);
+      return { success: true, preview };
+    }
+    
     // ─── Transaction Signing ───
     case 'SIGN_TRANSACTION': {
       const { tx, chainId } = data;
       const session = await storage.get('session');
       if (!session) throw new Error('Wallet locked');
       
-      // Show confirmation notification
+      // Run security scan
+      const scan = await scamScanner.analyzeTransaction(tx, chainId);
+      
+      // If critical risk, block immediately
+      if (scan.score === 0) {
+        throw new Error('🚨 BLOCKED: Critical security threat detected. This transaction appears malicious.');
+      }
+      
+      // If high risk, require explicit override
+      if (scan.score < 30) {
+        // Store pending tx with risk flag for popup to handle
+        await storage.set('pendingTx', {
+          tx, chainId, scan,
+          requiresOverride: true,
+          createdAt: Date.now()
+        });
+        return { requiresConfirmation: true, risk: 'HIGH', scan };
+      }
+      
+      // Generate preview for popup confirmation
+      const preview = await txPreview.preview(tx, chainId);
+      await storage.set('pendingTx', {
+        tx, chainId, scan, preview,
+        requiresOverride: false,
+        createdAt: Date.now()
+      });
+      
+      // Show notification + route to popup
       await chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon128.png',
-        title: '🔐 Transaction Request',
-        message: `Sign transaction to ${tx.to?.slice(0, 20)}... on chain ${chainId}?`
+        title: scan.safe ? '🔐 Sign Transaction' : '⚠️ Review Transaction',
+        message: `${preview.summary.description.slice(0, 80)}...`
       });
       
-      // In real implementation, show popup for confirmation
-      // For now, simulate approval after delay for UX
-      const signed = await walletManager.signTransaction(tx, session.privateKey);
-      return { success: true, signedTx: signed };
+      return { requiresConfirmation: true, scan, preview };
     }
     
     case 'SIGN_MESSAGE': {
@@ -217,6 +260,36 @@ async function handleMessage(request, sender) {
         spendingLimit: limit || '1.0',
         whitelistCount: (whitelist || []).length
       };
+    }
+    
+    // ─── Pending Transaction ───
+    case 'GET_PENDING_TX': {
+      const pendingTx = await storage.get('pendingTx');
+      if (!pendingTx) return { pendingTx: null };
+      return {
+        pendingTx,
+        scan: pendingTx.scan,
+        preview: pendingTx.preview,
+        requiresOverride: pendingTx.requiresOverride
+      };
+    }
+    
+    case 'CONFIRM_SIGN': {
+      const { txId } = data;
+      const pendingTx = await storage.get('pendingTx');
+      if (!pendingTx) throw new Error('No pending transaction');
+      
+      const session = await storage.get('session');
+      if (!session) throw new Error('Wallet locked');
+      
+      const signed = await walletManager.signTransaction(pendingTx.tx, session.privateKey);
+      await storage.remove('pendingTx');
+      return { success: true, signedTx: signed };
+    }
+    
+    case 'REJECT_TX': {
+      await storage.remove('pendingTx');
+      return { success: true };
     }
     
     default:

@@ -94,12 +94,20 @@ function bindEvents() {
   $('#btn-copy-address').onclick = copyAddress;
   $('#btn-receive-back').onclick = () => showView('dashboard');
   
-  // Vault
-  $('#btn-deploy-vault').onclick = deployVault;
-  $('#btn-freeze').onclick = freezeVault;
-  $('#btn-vault-back').onclick = () => showView('dashboard');
-  
-  // Footer tabs
+    // Vault
+    $('#btn-deploy-vault').onclick = deployVault;
+    $('#btn-freeze').onclick = freezeVault;
+    $('#btn-vault-back').onclick = () => showView('dashboard');
+    
+    // Transaction Confirmation
+    $('#btn-reject').onclick = rejectTransaction;
+    $('#btn-confirm-sign').onclick = confirmSignTransaction;
+    $('#override-risk').onchange = checkCanOverride;
+    
+    // Check for pending transaction on open (from dApp)
+    checkPendingTransaction();
+    
+    // Footer tabs
   $('#tab-home').onclick = () => { showView('dashboard'); setTab('tab-home'); };
   $('#tab-security').onclick = () => showView('vault');
   
@@ -388,3 +396,96 @@ function setTab(tabId) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   $(`#${tabId}`).classList.add('active');
 }
+
+// ─── Transaction Confirmation ───
+let currentPendingTx = null;
+
+async function checkPendingTransaction() {
+  const result = await send('GET_PENDING_TX');
+  if (result.pendingTx) {
+    currentPendingTx = result.pendingTx;
+    showConfirmation(result.scan, result.preview, result.requiresOverride);
+  }
+}
+
+function showConfirmation(scan, preview, requiresOverride) {
+  // Update score display
+  const score = scan.score;
+  $('#score-number').textContent = score;
+  $('#score-circle').className = `score-circle ${score >= 70 ? 'safe' : score >= 30 ? 'warning' : 'danger'}`;
+  $('#score-text').textContent = scan.summary;
+  
+  // Risk alerts
+  const alertsDiv = $('#risk-alerts');
+  alertsDiv.innerHTML = '';
+  
+  [...scan.risks, ...scan.warnings].forEach(alert => {
+    const div = document.createElement('div');
+    div.className = `alert alert-${alert.severity.toLowerCase()}`;
+    div.innerHTML = `
+      <strong>${alert.severity}:</strong> ${alert.title}
+      <p>${alert.description}</p>
+    `;
+    alertsDiv.appendChild(div);
+  });
+  
+  // Preview
+  $('#preview-action').textContent = preview.summary.action;
+  $('#preview-to').textContent = preview.summary.target;
+  $('#preview-value').textContent = preview.summary.value.formatted;
+  
+  // State changes
+  const changesDiv = $('#changes-list');
+  changesDiv.innerHTML = '';
+  preview.stateChanges.forEach(change => {
+    const div = document.createElement('div');
+    div.className = `change-item ${change.direction === 'OUT' ? 'out' : 'neutral'}`;
+    div.textContent = `• ${change.asset}: ${change.direction || change.change}`;
+    changesDiv.appendChild(div);
+  });
+  
+  // Override for high risk
+  const overrideSection = $('#override-section');
+  if (requiresOverride) {
+    overrideSection.classList.remove('hidden');
+    $('#btn-confirm-sign').disabled = true;
+  } else {
+    overrideSection.classList.add('hidden');
+    $('#btn-confirm-sign').disabled = false;
+  }
+  
+  showView('confirm');
+}
+
+function checkCanOverride() {
+  const checked = $('#override-risk').checked;
+  $('#btn-confirm-sign').disabled = !checked;
+}
+
+async function confirmSignTransaction() {
+  if (!currentPendingTx) return;
+  
+  showLoading('Signing transaction...');
+  try {
+    const result = await send('CONFIRM_SIGN', {
+      txId: currentPendingTx.txId
+    });
+    if (result.success) {
+      showToast('Transaction signed and sent!', 'success');
+      currentPendingTx = null;
+      showView('dashboard');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function rejectTransaction() {
+  await send('REJECT_TX');
+  currentPendingTx = null;
+  showToast('Transaction rejected', 'info');
+  showView('dashboard');
+}
+
