@@ -1,5 +1,6 @@
 /**
  * Secure Storage — chrome.storage.local wrapper with encryption
+ * SECURITY: All values JSON-serialized. Raw access for encrypted wallet data.
  */
 
 export class SecureStorage {

@@ -1,6 +1,7 @@
 /**
  * EIP-1193 Provider — Injected into page context
  * Exposes window.ethereum for dApp compatibility
+ * SECURITY: Message origin restriction, no console leaks
  */
 
 (function() {
@@ -24,30 +25,35 @@
   function emit(event, data) {
     const handlers = listeners.get(event) || [];
     handlers.forEach(h => {
-      try { h(data); } catch (e) { console.error(e); }
+      try { h(data); } catch (e) { /* silent */ }
     });
   }
   
   function postMessage(method, params = []) {
     return new Promise((resolve, reject) => {
       const id = ++requestId;
-      pendingRequests.set(id, { resolve, reject, timer: setTimeout(() => {
-        pendingRequests.delete(id);
-        reject(new Error('Request timeout'));
-      }, 60000) });
+      pendingRequests.set(id, { 
+        resolve, 
+        reject, 
+        timer: setTimeout(() => {
+          pendingRequests.delete(id);
+          reject(new Error('Request timeout'));
+        }, 60000) 
+      });
       
       window.postMessage({
         source: PROVIDER_ID,
         id,
         method,
         params
-      }, '*');
+      }, window.location.origin); // ✅ Restrict to same origin
     });
   }
   
   // Listen for responses from content script
   window.addEventListener('message', (event) => {
     if (event.source !== window) return;
+    if (event.origin !== window.location.origin) return; // ✅ Validate origin
     if (!event.data || event.data.source !== 'secure-wallet-content') return;
     
     const { id, result, error } = event.data;
@@ -67,7 +73,7 @@
   // ─── EIP-1193 Provider Object ───
   const provider = {
     isSecureWallet: true,
-    isMetaMask: true, // For dApp compatibility
+    isMetaMask: false, // ✅ Don't pretend to be MetaMask (can cause issues)
     _events: listeners,
     
     // EIP-1193 required methods
@@ -112,7 +118,6 @@
           return null;
           
         case 'wallet_addEthereumChain':
-          // Not implemented in MVP
           throw new Error('wallet_addEthereumChain not supported');
           
         default:
@@ -152,8 +157,8 @@
   // Inject into window
   window.ethereum = provider;
   
-  // Dispatch ethereum#initialized event (standard practice)
+  // Dispatch ethereum#initialized event
   window.dispatchEvent(new Event('ethereum#initialized'));
   
-  console.log('🔐 Secure Wallet provider injected');
+  // No console.log in production — prevents detection
 })();

@@ -11,7 +11,6 @@ const KNOWN_SELECTORS = {
   '0x23b872dd': { name: 'transferFrom', type: 'ERC20', params: ['sender', 'recipient', 'amount'] },
   '0x095ea7b3': { name: 'approve', type: 'ERC20', params: ['spender', 'amount'] },
   '0xd505accf': { name: 'permit', type: 'ERC20', params: ['owner', 'spender', 'value', 'deadline', 'v', 'r', 's'] },
-  '0x23b872dd': { name: 'transferFrom', type: 'ERC20', params: ['from', 'to', 'tokenId'] },
   '0x42842e0e': { name: 'safeTransferFrom', type: 'ERC721', params: ['from', 'to', 'tokenId'] },
   '0xb88d4fde': { name: 'safeTransferFrom', type: 'ERC721', params: ['from', 'to', 'tokenId', 'data'] },
   '0xa22cb465': { name: 'setApprovalForAll', type: 'ERC721', params: ['operator', 'approved'] },
@@ -19,12 +18,11 @@ const KNOWN_SELECTORS = {
   '0x2e1a7d4d': { name: 'withdraw', type: 'WETH', params: ['amount'] },
   '0xd0e30db0': { name: 'deposit', type: 'WETH', params: [] },
   '0xf305d719': { name: 'deposit', type: 'Vault', params: ['amount'] },
-  '0x2e1a7d4d': { name: 'withdraw', type: 'Vault', params: ['shares'] },
   '0x8f9a55c0': { name: 'swapExactTokensForTokens', type: 'DEX', params: ['amountIn', 'amountOutMin', 'path', 'to', 'deadline'] },
   '0x8803dbee': { name: 'swapTokensForExactTokens', type: 'DEX', params: ['amountOut', 'amountInMax', 'path', 'to', 'deadline'] },
 };
 
-// Common token addresses (would be fetched from API in production)
+// Common token addresses
 const KNOWN_TOKENS = {};
 
 export class TransactionPreview {
@@ -87,7 +85,6 @@ export class TransactionPreview {
   }
 
   _extractParams(data) {
-    // Skip selector (10 chars = 4 bytes hex + 0x)
     const paramsData = data.slice(10);
     const params = [];
     
@@ -111,7 +108,6 @@ export class TransactionPreview {
   _formatTokenAmount(hexValue) {
     try {
       const value = BigInt(hexValue);
-      // Assume 18 decimals for now
       const formatted = Number(value) / 1e18;
       return {
         raw: value.toString(),
@@ -146,12 +142,13 @@ export class TransactionPreview {
       case 'transfer':
         summary.description = `Send ${decoded.params.amount?.formatted || '?'} tokens to ${this._shorten(decoded.params.recipient)}`;
         break;
-      case 'approve':
+      case 'approve': {
         const isInfinite = decoded.params.amount?.raw === '115792089237316195423570985008687907853269984665640564039457584007913129639935';
         summary.description = isInfinite 
           ? `⚠️ Grant INFINITE spending power to ${this._shorten(decoded.params.spender)}`
           : `Approve ${decoded.params.amount?.formatted || '?'} tokens for ${this._shorten(decoded.params.spender)}`;
         break;
+      }
       case 'setApprovalForAll':
         summary.description = `⚠️ Grant FULL control of ALL NFTs to ${this._shorten(decoded.params.operator)}`;
         break;

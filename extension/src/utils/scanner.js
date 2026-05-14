@@ -1,25 +1,24 @@
 /**
  * Scam Scanner — Real-time threat detection before signing
  * Detects: honeypots, infinite approvals, known scam contracts, phishing
+ * SECURITY: Input validation, proper cache eviction
  */
 
 import { NETWORKS } from './network.js';
 
-// Known threat patterns (expandable via remote update)
+// Known threat patterns
 const THREAT_PATTERNS = {
-  infiniteApproval: ['0x095ea7b3', 'approve(address,uint256)'], // spender + max uint
+  infiniteApproval: ['0x095ea7b3', 'approve(address,uint256)'],
   transferAll: ['transfer(address,uint256)', 'transferFrom(address,address,uint256)'],
   selfDestruct: ['selfdestruct(address)', 'delegatecall'],
   permit: ['permit(address,address,uint256,uint256,uint8,bytes32,bytes32)'],
 };
 
-// Known scam/heist addresses (would fetch from remote DB in production)
+// Known scam/heist addresses
 const KNOWN_SCAM_DB = new Set([
-  // Ethereum
   '0x0000000000000000000000000000000000000000',
 ]);
 
-// Chain-specific block explorers for verification
 const EXPLORERS = {
   ethereum: 'https://etherscan.io',
   base: 'https://basescan.org',
@@ -40,6 +39,17 @@ export class ScamScanner {
    * Returns: { safe: boolean, score: 0-100, risks: [], warnings: [] }
    */
   async analyzeTransaction(tx, chainId) {
+    // ✅ SECURITY: Validate input
+    if (!tx || typeof tx !== 'object') {
+      return {
+        safe: false,
+        score: 0,
+        risks: [{ severity: 'CRITICAL', title: 'Invalid Transaction', description: 'Transaction data is malformed.' }],
+        warnings: [],
+        summary: { description: 'Invalid transaction format' }
+      };
+    }
+    
     const risks = [];
     const warnings = [];
     let score = 100;
@@ -48,6 +58,26 @@ export class ScamScanner {
     const data = tx.data || '0x';
     const to = tx.to?.toLowerCase();
     const value = tx.value || '0';
+
+    // Validate address format
+    if (to && !this._isValidAddress(to)) {
+      risks.push({
+        severity: 'CRITICAL',
+        title: 'Invalid Address',
+        description: 'Transaction recipient address is invalid.'
+      });
+      score = 0;
+    }
+
+    // Validate data format
+    if (data !== '0x' && !this._isValidHexData(data)) {
+      risks.push({
+        severity: 'CRITICAL',
+        title: 'Invalid Calldata',
+        description: 'Transaction data is not valid hexadecimal.'
+      });
+      score = 0;
+    }
 
     // ─── 1. Check if recipient is known scam ───
     if (to && KNOWN_SCAM_DB.has(to)) {
@@ -146,14 +176,22 @@ export class ScamScanner {
     };
   }
 
+  // ─── Input Validation ───
+
+  _isValidAddress(addr) {
+    return /^0x[a-fA-F0-9]{40}$/.test(addr);
+  }
+
+  _isValidHexData(data) {
+    return data === '0x' || /^0x([a-fA-F0-9]{2})*$/.test(data);
+  }
+
   // ─── Detection Helpers ───
 
   _isInfiniteApproval(data) {
     if (!data || data === '0x') return false;
     const selector = data.slice(0, 10);
-    // approve(address, uint256) = 0x095ea7b3
     if (selector !== '0x095ea7b3') return false;
-    // Check if amount is max uint256
     const amountHex = data.slice(74, 138);
     const maxUint = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
     return amountHex?.toLowerCase() === maxUint;
@@ -162,17 +200,17 @@ export class ScamScanner {
   _isTokenTransfer(data) {
     if (!data || data === '0x') return false;
     const selector = data.slice(0, 10);
-    return ['0xa9059cbb', '0x23b872dd'].includes(selector); // transfer / transferFrom
+    return ['0xa9059cbb', '0x23b872dd'].includes(selector);
   }
 
   _isPermit(data) {
     if (!data || data === '0x') return false;
-    return data.startsWith('0xd505accf'); // permit()
+    return data.startsWith('0xd505accf');
   }
 
   _isApprovalForAll(data) {
     if (!data || data === '0x') return false;
-    return data.startsWith('0xa22cb465'); // setApprovalForAll
+    return data.startsWith('0xa22cb465');
   }
 
   _isSuspiciousDomain(origin) {
@@ -194,12 +232,13 @@ export class ScamScanner {
   async _isContract(address, network) {
     try {
       const cacheKey = `contract_${address}`;
-      if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
+      const cached = this._getCache(cacheKey);
+      if (cached !== undefined) return cached;
       
       // In production: call eth_getCode via RPC
-      // For now, heuristic: addresses with >10 chars after 0x that look like contracts
-      const result = address.length === 42; // basic check
-      this.cache.set(cacheKey, result, this.cacheTTL);
+      // For MVP: basic length check as placeholder
+      const result = address.length === 42;
+      this._setCache(cacheKey, result);
       return result;
     } catch {
       return false;
@@ -208,8 +247,34 @@ export class ScamScanner {
 
   async _isVerifiedContract(address, network) {
     // In production: query block explorer API
-    // For MVP, return false to encourage caution
     return false;
+  }
+
+  // ─── Cache with TTL eviction ───
+
+  _getCache(key) {
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  _setCache(key, value) {
+    this.cache.set(key, {
+      value,
+      expiresAt: Date.now() + this.cacheTTL
+    });
+    
+    // Evict old entries if cache too large
+    if (this.cache.size > 1000) {
+      const now = Date.now();
+      for (const [k, v] of this.cache) {
+        if (now > v.expiresAt) this.cache.delete(k);
+      }
+    }
   }
 
   _buildSummary(score, risks, warnings) {
